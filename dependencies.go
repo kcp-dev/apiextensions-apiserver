@@ -20,6 +20,8 @@ import (
 	_ "github.com/kcp-dev/apimachinery/pkg/cache"
 	_ "github.com/kcp-dev/logicalcluster/v2"
 
+	_ "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/validation"
+	_ "k8s.io/apiextensions-apiserver/pkg/apiserver/schema/cel"
 	_ "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	_ "k8s.io/apimachinery/pkg/labels"
 )
