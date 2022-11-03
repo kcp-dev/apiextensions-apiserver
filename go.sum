@@ -298,8 +298,8 @@ github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/X
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
-github.com/kcp-dev/apimachinery v0.0.0-20221019133255-9e1e13940519 h1:eU1HvmmP8TbzS2pB9IX2Spky20n6V79/KgX4ssiG/A8=
-github.com/kcp-dev/apimachinery v0.0.0-20221019133255-9e1e13940519/go.mod h1:qnvUHkdxOrNzX17yX+z8r81CZEBuFdveNzWqFlwZ55w=
+github.com/kcp-dev/apimachinery v0.0.0-20221102195355-d65878bc16be h1:2uDzJ896+ojtzgr9HJL8+tZEoqhq8blwymGinWFrQ6E=
+github.com/kcp-dev/apimachinery v0.0.0-20221102195355-d65878bc16be/go.mod h1:qnvUHkdxOrNzX17yX+z8r81CZEBuFdveNzWqFlwZ55w=
 github.com/kcp-dev/client-go v0.0.0-20221024180817-7bb88a6fa3c6 h1:8+UHKft6/BYymGDqrfChGSjkCi1E+S4E39zlOLIeA/8=
 github.com/kcp-dev/client-go v0.0.0-20221024180817-7bb88a6fa3c6/go.mod h1:jo6aMHy7JglKs2YixRXr4DjVzQiqFSA7RPqHQCi3WNo=
 github.com/kcp-dev/logicalcluster/v2 v2.0.0-alpha.3 h1:+DwIG/loh2nDB9c/FqNvLzFFq/YtBliLxAfw/uWNzyE=
