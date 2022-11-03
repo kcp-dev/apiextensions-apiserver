@@ -33,9 +33,14 @@ import (
 )
 
 // CustomResourceDefinitionClusterLister can list CustomResourceDefinitions across all workspaces, or scope down to a CustomResourceDefinitionLister for one workspace.
+// All objects returned here must be treated as read-only.
 type CustomResourceDefinitionClusterLister interface {
+	// List lists all CustomResourceDefinitions in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*apiextensionsv1beta1.CustomResourceDefinition, err error)
+	// Cluster returns a lister that can list and get CustomResourceDefinitions in one workspace.
 	Cluster(cluster logicalcluster.Name) apiextensionsv1beta1listers.CustomResourceDefinitionLister
+	CustomResourceDefinitionClusterListerExpansion
 }
 
 type customResourceDefinitionClusterLister struct {
@@ -43,6 +48,10 @@ type customResourceDefinitionClusterLister struct {
 }
 
 // NewCustomResourceDefinitionClusterLister returns a new CustomResourceDefinitionClusterLister.
+// We assume that the indexer:
+// - is fed by a cross-workspace LIST+WATCH
+// - uses kcpcache.MetaClusterNamespaceKeyFunc as the key function
+// - has the kcpcache.ClusterIndex as an index
 func NewCustomResourceDefinitionClusterLister(indexer cache.Indexer) *customResourceDefinitionClusterLister {
 	return &customResourceDefinitionClusterLister{indexer: indexer}
 }
