@@ -1,6 +1,6 @@
 module github.com/kcp-dev/apiextensions-apiserver
 
-go 1.18
+go 1.19
 
 require (
 	github.com/kcp-dev/apimachinery v0.0.0-20221102195355-d65878bc16be
