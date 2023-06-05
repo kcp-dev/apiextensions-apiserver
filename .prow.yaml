@@ -1,0 +1,26 @@
+presubmits:
+  - name: pull-apiextensions-apiserver-lint
+    always_run: true
+    decorate: true
+    clone_uri: "https://github.com/kcp-dev/apiextensions-apiserver"
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: ghcr.io/kcp-dev/infra/build:1.19.9-2
+          command:
+            - make
+            - lint
+
+  - name: pull-apiextensions-apiserver-verify
+    always_run: true
+    decorate: true
+    clone_uri: "https://github.com/kcp-dev/apiextensions-apiserver"
+    labels:
+      preset-goproxy: "true"
+    spec:
+      containers:
+        - image: ghcr.io/kcp-dev/infra/build:1.19.9-2
+          command:
+            - make
+            - verify-codegen
