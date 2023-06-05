@@ -24,8 +24,8 @@ package v1beta1
 import (
 	"context"
 
-	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
-	"github.com/kcp-dev/logicalcluster/v2"
+	kcpclient "github.com/kcp-dev/apimachinery/v2/pkg/client"
+	"github.com/kcp-dev/logicalcluster/v3"
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsv1beta1client "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
@@ -42,7 +42,7 @@ type CustomResourceDefinitionsClusterGetter interface {
 // CustomResourceDefinitionClusterInterface can operate on CustomResourceDefinitions across all clusters,
 // or scope down to one cluster and return a apiextensionsv1beta1client.CustomResourceDefinitionInterface.
 type CustomResourceDefinitionClusterInterface interface {
-	Cluster(logicalcluster.Name) apiextensionsv1beta1client.CustomResourceDefinitionInterface
+	Cluster(logicalcluster.Path) apiextensionsv1beta1client.CustomResourceDefinitionInterface
 	List(ctx context.Context, opts metav1.ListOptions) (*apiextensionsv1beta1.CustomResourceDefinitionList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 }
@@ -52,12 +52,12 @@ type customResourceDefinitionsClusterInterface struct {
 }
 
 // Cluster scopes the client down to a particular cluster.
-func (c *customResourceDefinitionsClusterInterface) Cluster(name logicalcluster.Name) apiextensionsv1beta1client.CustomResourceDefinitionInterface {
-	if name == logicalcluster.Wildcard {
+func (c *customResourceDefinitionsClusterInterface) Cluster(clusterPath logicalcluster.Path) apiextensionsv1beta1client.CustomResourceDefinitionInterface {
+	if clusterPath == logicalcluster.Wildcard {
 		panic("A specific cluster must be provided when scoping, not the wildcard.")
 	}
 
-	return c.clientCache.ClusterOrDie(name).CustomResourceDefinitions()
+	return c.clientCache.ClusterOrDie(clusterPath).CustomResourceDefinitions()
 }
 
 // List returns the entire collection of all CustomResourceDefinitions across all clusters.
