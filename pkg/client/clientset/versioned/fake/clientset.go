@@ -22,7 +22,7 @@ limitations under the License.
 package fake
 
 import (
-	"github.com/kcp-dev/logicalcluster/v2"
+	"github.com/kcp-dev/logicalcluster/v3"
 
 	kcpfakediscovery "github.com/kcp-dev/client-go/third_party/k8s.io/client-go/discovery/fake"
 	kcptesting "github.com/kcp-dev/client-go/third_party/k8s.io/client-go/testing"
@@ -49,7 +49,7 @@ func NewSimpleClientset(objects ...runtime.Object) *ClusterClientset {
 	o.AddAll(objects...)
 
 	cs := &ClusterClientset{Fake: &kcptesting.Fake{}, tracker: o}
-	cs.discovery = &kcpfakediscovery.FakeDiscovery{Fake: cs.Fake, Cluster: logicalcluster.Wildcard}
+	cs.discovery = &kcpfakediscovery.FakeDiscovery{Fake: cs.Fake, ClusterPath: logicalcluster.Wildcard}
 	cs.AddReactor("*", "*", kcptesting.ObjectReaction(o))
 	cs.AddWatchReactor("*", kcptesting.WatchReaction(o))
 
@@ -85,15 +85,15 @@ func (c *ClusterClientset) ApiextensionsV1beta1() kcpapiextensionsv1beta1.Apiext
 }
 
 // Cluster scopes this clientset to one cluster.
-func (c *ClusterClientset) Cluster(cluster logicalcluster.Name) client.Interface {
-	if cluster == logicalcluster.Wildcard {
+func (c *ClusterClientset) Cluster(clusterPath logicalcluster.Path) client.Interface {
+	if clusterPath == logicalcluster.Wildcard {
 		panic("A specific cluster must be provided when scoping, not the wildcard.")
 	}
 	return &Clientset{
-		Fake:      c.Fake,
-		discovery: &kcpfakediscovery.FakeDiscovery{Fake: c.Fake, Cluster: cluster},
-		tracker:   c.tracker.Cluster(cluster),
-		cluster:   cluster,
+		Fake:        c.Fake,
+		discovery:   &kcpfakediscovery.FakeDiscovery{Fake: c.Fake, ClusterPath: clusterPath},
+		tracker:     c.tracker.Cluster(clusterPath),
+		clusterPath: clusterPath,
 	}
 }
 
@@ -102,9 +102,9 @@ var _ client.Interface = (*Clientset)(nil)
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*kcptesting.Fake
-	discovery *kcpfakediscovery.FakeDiscovery
-	tracker   kcptesting.ScopedObjectTracker
-	cluster   logicalcluster.Name
+	discovery   *kcpfakediscovery.FakeDiscovery
+	tracker     kcptesting.ScopedObjectTracker
+	clusterPath logicalcluster.Path
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -118,10 +118,10 @@ func (c *Clientset) Tracker() kcptesting.ScopedObjectTracker {
 
 // ApiextensionsV1 retrieves the ApiextensionsV1Client.
 func (c *Clientset) ApiextensionsV1() apiextensionsv1.ApiextensionsV1Interface {
-	return &fakeapiextensionsv1.ApiextensionsV1Client{Fake: c.Fake, Cluster: c.cluster}
+	return &fakeapiextensionsv1.ApiextensionsV1Client{Fake: c.Fake, ClusterPath: c.clusterPath}
 }
 
 // ApiextensionsV1beta1 retrieves the ApiextensionsV1beta1Client.
 func (c *Clientset) ApiextensionsV1beta1() apiextensionsv1beta1.ApiextensionsV1beta1Interface {
-	return &fakeapiextensionsv1beta1.ApiextensionsV1beta1Client{Fake: c.Fake, Cluster: c.cluster}
+	return &fakeapiextensionsv1beta1.ApiextensionsV1beta1Client{Fake: c.Fake, ClusterPath: c.clusterPath}
 }

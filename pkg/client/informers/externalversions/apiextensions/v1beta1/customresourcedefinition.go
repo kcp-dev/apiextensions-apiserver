@@ -25,9 +25,9 @@ import (
 	"context"
 	"time"
 
-	kcpcache "github.com/kcp-dev/apimachinery/pkg/cache"
-	kcpinformers "github.com/kcp-dev/apimachinery/third_party/informers"
-	"github.com/kcp-dev/logicalcluster/v2"
+	kcpcache "github.com/kcp-dev/apimachinery/v2/pkg/cache"
+	kcpinformers "github.com/kcp-dev/apimachinery/v2/third_party/informers"
+	"github.com/kcp-dev/logicalcluster/v3"
 
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	upstreamapiextensionsv1beta1informers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensions/v1beta1"
@@ -103,10 +103,10 @@ func (f *customResourceDefinitionClusterInformer) Lister() apiextensionsv1beta1l
 	return apiextensionsv1beta1listers.NewCustomResourceDefinitionClusterLister(f.Informer().GetIndexer())
 }
 
-func (f *customResourceDefinitionClusterInformer) Cluster(cluster logicalcluster.Name) upstreamapiextensionsv1beta1informers.CustomResourceDefinitionInformer {
+func (f *customResourceDefinitionClusterInformer) Cluster(clusterName logicalcluster.Name) upstreamapiextensionsv1beta1informers.CustomResourceDefinitionInformer {
 	return &customResourceDefinitionInformer{
-		informer: f.Informer().Cluster(cluster),
-		lister:   f.Lister().Cluster(cluster),
+		informer: f.Informer().Cluster(clusterName),
+		lister:   f.Lister().Cluster(clusterName),
 	}
 }
 

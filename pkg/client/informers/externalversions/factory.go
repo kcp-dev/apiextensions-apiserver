@@ -26,8 +26,8 @@ import (
 	"sync"
 	"time"
 
-	kcpcache "github.com/kcp-dev/apimachinery/pkg/cache"
-	"github.com/kcp-dev/logicalcluster/v2"
+	kcpcache "github.com/kcp-dev/apimachinery/v2/pkg/cache"
+	"github.com/kcp-dev/logicalcluster/v3"
 
 	upstreaminformers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,6 +59,11 @@ type sharedInformerFactory struct {
 	// startedInformers is used for tracking which informers have been started.
 	// This allows Start() to be called multiple times safely.
 	startedInformers map[reflect.Type]bool
+	// wg tracks how many goroutines were started.
+	wg sync.WaitGroup
+	// shuttingDown is true when Shutdown has been called. It may still be running
+	// because it needs to wait for goroutines.
+	shuttingDown bool
 }
 
 // WithCustomResyncConfig sets a custom resync period for the specified informer types.
@@ -115,12 +120,33 @@ func (f *sharedInformerFactory) Start(stopCh <-chan struct{}) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
+	if f.shuttingDown {
+		return
+	}
+
 	for informerType, informer := range f.informers {
 		if !f.startedInformers[informerType] {
-			go informer.Run(stopCh)
+			f.wg.Add(1)
+			// We need a new variable in each loop iteration,
+			// otherwise the goroutine would use the loop variable
+			// and that keeps changing.
+			informer := informer
+			go func() {
+				defer f.wg.Done()
+				informer.Run(stopCh)
+			}()
 			f.startedInformers[informerType] = true
 		}
 	}
+}
+
+func (f *sharedInformerFactory) Shutdown() {
+	f.lock.Lock()
+	f.shuttingDown = true
+	f.lock.Unlock()
+
+	// Will return immediately if there is nothing to wait for.
+	f.wg.Wait()
 }
 
 // WaitForCacheSync waits for all started informers' cache were synced.
@@ -145,8 +171,7 @@ func (f *sharedInformerFactory) WaitForCacheSync(stopCh <-chan struct{}) map[ref
 	return res
 }
 
-// InformerFor returns the SharedIndexInformer for obj using an internal
-// client.
+// InformerFor returns the SharedIndexInformer for obj.
 func (f *sharedInformerFactory) InformerFor(obj runtime.Object, newFunc internalinterfaces.NewInformerFunc) kcpcache.ScopeableSharedIndexInformer {
 	f.lock.Lock()
 	defer f.lock.Unlock()
@@ -169,17 +194,68 @@ func (f *sharedInformerFactory) InformerFor(obj runtime.Object, newFunc internal
 }
 
 type ScopedDynamicSharedInformerFactory interface {
+	// ForResource gives generic access to a shared informer of the matching type.
 	ForResource(resource schema.GroupVersionResource) (upstreaminformers.GenericInformer, error)
+
+	// Start initializes all requested informers. They are handled in goroutines
+	// which run until the stop channel gets closed.
 	Start(stopCh <-chan struct{})
 }
 
 // SharedInformerFactory provides shared informers for resources in all known
 // API group versions.
+//
+// It is typically used like this:
+//
+//	ctx, cancel := context.Background()
+//	defer cancel()
+//	factory := NewSharedInformerFactoryWithOptions(client, resyncPeriod)
+//	defer factory.Shutdown()    // Returns immediately if nothing was started.
+//	genericInformer := factory.ForResource(resource)
+//	typedInformer := factory.SomeAPIGroup().V1().SomeType()
+//	factory.Start(ctx.Done())          // Start processing these informers.
+//	synced := factory.WaitForCacheSync(ctx.Done())
+//	for v, ok := range synced {
+//	    if !ok {
+//	        fmt.Fprintf(os.Stderr, "caches failed to sync: %v", v)
+//	        return
+//	    }
+//	}
+//
+//	// Creating informers can also be created after Start, but then
+//	// Start must be called again:
+//	anotherGenericInformer := factory.ForResource(resource)
+//	factory.Start(ctx.Done())
 type SharedInformerFactory interface {
 	internalinterfaces.SharedInformerFactory
+
 	Cluster(logicalcluster.Name) ScopedDynamicSharedInformerFactory
+
+	// Start initializes all requested informers. They are handled in goroutines
+	// which run until the stop channel gets closed.
+	Start(stopCh <-chan struct{})
+
+	// Shutdown marks a factory as shutting down. At that point no new
+	// informers can be started anymore and Start will return without
+	// doing anything.
+	//
+	// In addition, Shutdown blocks until all goroutines have terminated. For that
+	// to happen, the close channel(s) that they were started with must be closed,
+	// either before Shutdown gets called or while it is waiting.
+	//
+	// Shutdown may be called multiple times, even concurrently. All such calls will
+	// block until all goroutines have terminated.
+	Shutdown()
+
+	// ForResource gives generic access to a shared informer of the matching type.
 	ForResource(resource schema.GroupVersionResource) (GenericClusterInformer, error)
+
+	// WaitForCacheSync blocks until all started informers' caches were synced
+	// or the stop channel gets closed.
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
+
+	// InformerFor returns the SharedIndexInformer for obj.
+	InformerFor(obj runtime.Object, newFunc internalinterfaces.NewInformerFunc) kcpcache.ScopeableSharedIndexInformer
 
 	Apiextensions() apiextensionsinformers.ClusterInterface
 }
@@ -188,16 +264,16 @@ func (f *sharedInformerFactory) Apiextensions() apiextensionsinformers.ClusterIn
 	return apiextensionsinformers.New(f, f.tweakListOptions)
 }
 
-func (f *sharedInformerFactory) Cluster(cluster logicalcluster.Name) ScopedDynamicSharedInformerFactory {
+func (f *sharedInformerFactory) Cluster(clusterName logicalcluster.Name) ScopedDynamicSharedInformerFactory {
 	return &scopedDynamicSharedInformerFactory{
 		sharedInformerFactory: f,
-		cluster:               cluster,
+		clusterName:           clusterName,
 	}
 }
 
 type scopedDynamicSharedInformerFactory struct {
 	*sharedInformerFactory
-	cluster logicalcluster.Name
+	clusterName logicalcluster.Name
 }
 
 func (f *scopedDynamicSharedInformerFactory) ForResource(resource schema.GroupVersionResource) (upstreaminformers.GenericInformer, error) {
@@ -205,7 +281,7 @@ func (f *scopedDynamicSharedInformerFactory) ForResource(resource schema.GroupVe
 	if err != nil {
 		return nil, err
 	}
-	return clusterInformer.Cluster(f.cluster), nil
+	return clusterInformer.Cluster(f.clusterName), nil
 }
 
 func (f *scopedDynamicSharedInformerFactory) Start(stopCh <-chan struct{}) {
